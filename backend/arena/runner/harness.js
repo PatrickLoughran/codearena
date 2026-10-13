@@ -22,7 +22,9 @@ const LANGUAGES = {
 
 function functionNameFor(problem, language) {
   const fn = problem.function
-  return language === 'python' ? fn.pythonName : fn.name
+  if (language === 'python') return fn.pythonName
+  if (language === 'go') return fn.goName || fn.name
+  return fn.name
 }
 
 function javascriptProgram(code, name, marker, typescript = false) {
@@ -72,48 +74,98 @@ __codearena_main()
 `
 }
 
-function goProgram(code, name, marker) {
-  return `${code}
+function goProgram(code, name, marker, problem) {
+  const mapType = (t) => {
+    if (t === 'integer') return 'int'
+    if (t === 'number') return 'float64'
+    if (t === 'boolean') return 'bool'
+    if (t.endsWith('[]')) return `[]${mapType(t.slice(0, -2))}`
+    return 'string'
+  }
 
-package main
+  const params = problem && problem.function && problem.function.params ? problem.function.params : []
+
+  const paramDecls = params.map((p, idx) => `
+    var arg${idx} ${mapType(p.type)}
+    if err := json.Unmarshal(test.Args[${idx}], &arg${idx}); err != nil {
+      results = append(results, TestResult{Ok: false, Error: fmt.Sprintf("Failed to unmarshal argument %d: %v", ${idx}, err)})
+      continue
+    }
+  `).join('\n')
+
+  const argList = params.map((_, idx) => `arg${idx}`).join(', ')
+
+  return `package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
+  "encoding/json"
+  "fmt"
+  "io"
+  "os"
+  "reflect"
 )
 
+${code}
+
 type TestInput struct {
-	Tests []struct {
-		Args []json.RawMessage \`json:"args"\`
-	} \`json:"tests"\`
+  Tests []struct {
+    Args []json.RawMessage \`json:"args"\`
+  } \`json:"tests"\`
 }
 
 type TestResult struct {
-	Ok    bool        \`json:"ok"\`
-	Value interface{} \`json:"value,omitempty"\`
-	Error string      \`json:"error,omitempty"\`
+  Ok    bool        \`json:"ok"\`
+  Value interface{} \`json:"value"\`
+  Error string      \`json:"error,omitempty"\`
 }
 
 func main() {
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return
-	}
+  inputData, err := io.ReadAll(os.Stdin)
+  if err != nil {
+    return
+  }
 
-	var input TestInput
-	if err := json.Unmarshal(inputData, &input); err != nil {
-		return
-	}
+  var input TestInput
+  if err := json.Unmarshal(inputData, &input); err != nil {
+    return
+  }
 
-	results := []TestResult{}
-	for _, test := range input.Tests {
-		_ = test
-	}
+  results := []TestResult{}
 
-	out, _ := json.Marshal(results)
-	fmt.Printf("\\n${marker}\\n%s\\n", string(out))
+  for _, test := range input.Tests {
+    if len(test.Args) < ${params.length} {
+      results = append(results, TestResult{Ok: false, Error: "Insufficient arguments provided"})
+      continue
+    }
+
+    ${paramDecls}
+
+    func() {
+      defer func() {
+        if r := recover(); r != nil {
+          results = append(results, TestResult{
+            Ok:    false,
+            Error: fmt.Sprintf("Panic: %v", r),
+          })
+        }
+      }()
+
+      res := ${name}(${argList})
+
+      var val interface{} = res
+      if reflect.TypeOf(res) != nil && reflect.TypeOf(res).Kind() == reflect.Slice && reflect.ValueOf(res).IsNil() {
+        val = []interface{}{}
+      }
+
+      results = append(results, TestResult{
+        Ok:    true,
+        Value: val,
+      })
+    }()
+  }
+
+  out, _ := json.Marshal(results)
+  fmt.Printf("\\n${marker}\\n%s\\n", string(out))
 }
 `
 }
@@ -125,7 +177,7 @@ function buildProgram({ language, code, problem, nonce }) {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error(`Invalid function name: ${name}`)
   const marker = markerFor(nonce)
   if (language === 'python') return pythonProgram(code, name, marker)
-  if (language === 'go') return goProgram(code, name, marker)
+  if (language === 'go') return goProgram(code, name, marker, problem)
   return javascriptProgram(code, name, marker, language === 'typescript')
 }
 
