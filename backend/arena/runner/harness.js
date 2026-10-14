@@ -100,7 +100,7 @@ function goProgram(code, name, marker, problem) {
 import (
   "encoding/json"
   "fmt"
-  "io"
+  "io/ioutil"
   "os"
   "reflect"
 )
@@ -120,7 +120,7 @@ type TestResult struct {
 }
 
 func main() {
-  inputData, err := io.ReadAll(os.Stdin)
+  inputData, err := ioutil.ReadAll(os.Stdin)
   if err != nil {
     return
   }
