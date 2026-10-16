@@ -1,7 +1,7 @@
 'use strict'
 
 const { execSync } = require('node:child_process')
-const { buildProgram, starterCode } = require('./harness')
+const { buildProgram, starterCode } = require('../arena/runner/harness')
 
 const sampleProblem = {
   function: {
@@ -48,7 +48,7 @@ describe('Go harness & starter code', () => {
       return
     }
 
-    const { localExecutor } = require('./executors')
+    const { localExecutor } = require('../arena/runner/executors')
     const executor = localExecutor({ allowUntrusted: true })
 
     const code = `
