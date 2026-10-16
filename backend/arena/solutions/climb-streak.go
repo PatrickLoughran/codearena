@@ -1,18 +1,20 @@
 func longestClimb(ratings []int) int {
-	if len(ratings) == 0 {
-		return 0
-	}
-	maxLen := 1
-	current := 1
-	for i := 1; i < len(ratings); i++ {
-		if ratings[i] > ratings[i-1] {
-			current++
-			if current > maxLen {
-				maxLen = current
+	var tails []int
+	for _, x := range ratings {
+		lo, hi := 0, len(tails)
+		for lo < hi {
+			mid := (lo + hi) / 2
+			if tails[mid] < x {
+				lo = mid + 1
+			} else {
+				hi = mid
 			}
+		}
+		if lo == len(tails) {
+			tails = append(tails, x)
 		} else {
-			current = 1
+			tails[lo] = x
 		}
 	}
-	return maxLen
+	return len(tails)
 }

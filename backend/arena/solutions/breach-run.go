@@ -38,10 +38,7 @@ func breachRun(grid []string, charges int) int {
 		return -1
 	}
 	C := len(grid[0])
-	if grid[0][0] == '#' || grid[R-1][C-1] == '#' {
-		return -1
-	}
-
+	
 	dist := make([][][]int, R)
 	for i := 0; i < R; i++ {
 		dist[i] = make([][]int, C)
@@ -73,20 +70,19 @@ func breachRun(grid []string, charges int) int {
 		for _, d := range dirs {
 			nr, nc := curr.r+d[0], curr.c+d[1]
 			if nr >= 0 && nr < R && nc >= 0 && nc < C {
-				cost := 1
+				cell := grid[nr][nc]
 				rem := curr.charges
-				if grid[nr][nc] == 'W' {
+				if cell == '#' {
 					if rem <= 0 {
 						continue
 					}
 					rem--
-				} else if grid[nr][nc] == '#' {
-					continue
 				}
-
-				if curr.dist+cost < dist[nr][nc][rem] {
-					dist[nr][nc][rem] = curr.dist + cost
-					heap.Push(pq, &Item{r: nr, c: nc, charges: rem, dist: curr.dist + cost})
+				
+				nextDist := curr.dist + 1
+				if nextDist < dist[nr][nc][rem] {
+					dist[nr][nc][rem] = nextDist
+					heap.Push(pq, &Item{r: nr, c: nc, charges: rem, dist: nextDist})
 				}
 			}
 		}

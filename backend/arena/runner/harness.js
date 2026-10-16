@@ -219,7 +219,13 @@ function starterCode(problem, language) {
       return 'string'
     }
     const typed = fn.params.map(p => `${p.name} ${mapType(p.type)}`)
-    return `func ${fn.name}(${typed.join(', ')}) ${mapType(fn.returns)} {\n  // Your code here\n}\n`
+    const retType = mapType(fn.returns)
+    let defaultReturn = '0'
+    if (retType === 'string') defaultReturn = '""'
+    else if (retType === 'bool') defaultReturn = 'false'
+    else if (retType.startsWith('[]')) defaultReturn = 'nil'
+
+    return `func ${fn.name}(${typed.join(', ')}) ${retType} {\n  // Your code here\n  return ${defaultReturn}\n}\n`
   }
   return `function ${fn.name}(${params.join(', ')}) {\n  // Your code here\n}\n`
 }
